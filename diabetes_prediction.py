@@ -16,12 +16,12 @@ from sklearn.linear_model import LogisticRegression
 from google.colab import drive
 drive.mount('/content/drive')
 
-from zipfile import ZipFile
+# from zipfile import ZipFile
 
-filename = "/content/drive/MyDrive/Datasets/diabetes_prediction/archive.zip"
-with ZipFile (filename,'r') as zip:
-  zip.printdir()
-  zip.extractall("/content/drive/MyDrive/Datasets/diabetes_prediction/data")
+# filename = "/content/drive/MyDrive/Datasets/diabetes_prediction/archive.zip"
+# with ZipFile (filename,'r') as zip:
+#   zip.printdir()
+#   zip.extractall("/content/drive/MyDrive/Datasets/diabetes_prediction/data")
 
 rootDir = "/content/drive/MyDrive/Datasets/diabetes_prediction/data/diabetes.csv"
 
@@ -39,73 +39,124 @@ sns.heatmap(corr,xticklabels=corr.columns,yticklabels=corr.columns)
 #checking for null values
 data.isnull().values.any()
 
+data.isnull().sum()
+
+data.describe()
+
 #checking whether the data is balanced
-diabetes_true_count = len(data.loc[data['Outcome'] == 1])
-diabetes_false_count = len(data.loc[data['Outcome'] == 0])
-(diabetes_true_count,diabetes_false_count)
+# diabetes_true_count = len(data.loc[data['Outcome'] == 1])
+# diabetes_false_count = len(data.loc[data['Outcome'] == 0])
+# (diabetes_true_count,diabetes_false_count)
 
-#train,test,split
+data['Outcome'].value_counts()
 
-from sklearn.model_selection import train_test_split
-data.columns
-feature_columns = []
-for col in data.columns:
-  feature_columns.append(col)
-#print(feature_columns)
-column_len = len(feature_columns)
-predicted_class = [feature_columns[column_len-1]]
-print(predicted_class)
-feature_columns.remove(feature_columns[column_len-1])
-print(feature_columns)
-
-x = data[feature_columns].values
-y = data[predicted_class].values
-
-x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.3,random_state=10)
-
-#checking for missing values or zeroes
-print("total number of rows ",len(data))
-for i in range(1,len(feature_columns)):
-  col = feature_columns[i]
-  print("no.of rows missing [{}] : {}".format(col,len(data.loc[data[col] == 0])))
+# #checking for missing values or zeroes
+# print("total number of rows ",len(data))
+# for i in range(1,len(feature_columns)):
+#   col = feature_columns[i]
+#   print("no.of rows missing [{}] : {}".format(col,len(data.loc[data[col] == 0])))
 
 #replace missing values with mean
 
-from sklearn.impute import SimpleImputer
+# from sklearn.impute import SimpleImputer
 
-fill_values = SimpleImputer(missing_values=0,strategy='mean')
-x_train = fill_values.fit_transform(x_train)
-x_test = fill_values.fit_transform(x_test)
+# fill_values = SimpleImputer(missing_values=0,strategy='mean')
+# x_train = fill_values.fit_transform(x_train)
+# x_test = fill_values.fit_transform(x_test)
+
+#Replacing 0 with Mean respective columns
+X = data.drop('Outcome',axis = 1)
+Y = data['Outcome']
+X.describe()
+
+X.replace(to_replace=0,value = X.mean(),inplace=True)
+X.describe()
+
+#train,test,split
+
+# from sklearn.model_selection import train_test_split
+# data.columns
+# feature_columns = []
+# for col in data.columns:
+#   feature_columns.append(col)
+# #print(feature_columns)
+# column_len = len(feature_columns)
+# predicted_class = [feature_columns[column_len-1]]
+# print(predicted_class)
+# feature_columns.remove(feature_columns[column_len-1])
+# print(feature_columns)
+
+# x = data[feature_columns].values
+# y = data[predicted_class].values
+from sklearn.model_selection import train_test_split
+x_train,x_test,y_train,y_test = train_test_split(X,Y,test_size=0.25,random_state=None)
+
+x_train
+
+from sklearn.preprocessing import StandardScaler
+std = StandardScaler()
+
+x_train_std = std.fit_transform(x_train)
+x_test_std = std.fit_transform(x_test)
+
+"""**Logistic Regression**"""
 
 diabetesCheck = LogisticRegression()
-diabetesCheck.fit(x_train,y_train)
+diabetesCheck.fit(x_train_std,y_train)
 
-accuracy = diabetesCheck.score(x_test,y_test)
+accuracy = diabetesCheck.score(x_test_std,y_test)
 print("Accuracy = ",accuracy*100,"%")
 
-#data normalization
-means = np.mean(x_train,axis =0 )
-stds = np.std(x_train,axis=0)
+# #data normalization
+# means = np.mean(x_train,axis =0 )
+# stds = np.std(x_train,axis=0)
 
-x_train = (x_train - means)/stds
-x_test = (x_test - means)/stds
+# x_train = (x_train - means)/stds
+# x_test = (x_test - means)/stds
 
-diabetesCheck = LogisticRegression()
-diabetesCheck.fit(x_train,y_train)
+# diabetesCheck = LogisticRegression()
+# diabetesCheck.fit(x_train,y_train)
 
-accuracy = diabetesCheck.score(x_test,y_test)
-print("Accuracy = ",accuracy*100,"%")
+# accuracy = diabetesCheck.score(x_test,y_test)
+# print("Accuracy = ",accuracy*100,"%")
+
+"""**Random Forest**"""
 
 #random forest
 from sklearn.ensemble import RandomForestClassifier
 random_forest_model = RandomForestClassifier(random_state=10)
-random_forest_model.fit(x_train,y_train.ravel())
+random_forest_model.fit(x_train_std,y_train.ravel())
 
-predict_train_data = random_forest_model.predict(x_test)
+predict_train_data = random_forest_model.predict(x_test_std)
 
 from sklearn import metrics
 
 print("Accuracy = {0:.3f}".format(metrics.accuracy_score(y_test,predict_train_data)))
 
-x_test
+"""**Decision Tree**"""
+
+#decision Tree
+from sklearn.tree import DecisionTreeClassifier
+dt = DecisionTreeClassifier()
+
+dt.fit(x_train_std,y_train)
+
+y_pred = dt.predict(x_test_std)
+
+y_pred
+
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test,y_pred)
+
+"""**Deep Learning**"""
+
+#deep learning
+from sklearn.neural_network import MLPClassifier
+mlp = MLPClassifier(hidden_layer_sizes=(8,8))
+
+mlp.fit(x_train_std,y_train)
+
+y_pred = mlp.predict(x_test_std)
+
+accuracy_score(y_test,y_pred)
 
